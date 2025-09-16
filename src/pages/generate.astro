@@ -48,4 +48,79 @@ import Layout from "../layouts/Layout.astro"
       </div>
     </div>
   </div>
+
+  <script>
+    //@ts-nocheck
+    
+    async function generateSVG(prompt) {
+      console.log('Generating SVG for prompt:', prompt);
+      const res = await fetch('/api/generate-svg', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
+      const data = await res.json();
+      return data.svg;
+    }
+
+    async function handleSubmit() {
+      let prompt = "";
+      let svgCode = "";
+      const promptElement = document.getElementById("user-prompt");
+      prompt = promptElement ? promptElement.value : "";
+      
+      if (!prompt.trim()) {
+        alert('Please enter a prompt');
+        return;
+      }
+      
+      console.log('submitted: ', prompt);
+      
+      const svgContainer = document.getElementById("svg-container");
+      let svgOutput = document.getElementById("svg-output");
+      const generateButton = document.getElementById("generate-button");
+      
+      // Affichage du loading spinner et désactivation du bouton
+      svgContainer.innerHTML = `<span class="loading loading-ring loading-xl"></span>`;
+      generateButton.disabled = true;
+      generateButton.textContent = 'Generating...';
+      svgOutput.textContent = 'Generating SVG code...';
+      
+      try {
+        svgCode = await generateSVG(prompt);
+        console.log('svgCode: ', svgCode);
+        
+        if (svgCode) {
+          svgOutput.textContent = svgCode;
+          svgContainer.innerHTML = svgCode;
+        } else {
+          svgContainer.innerHTML = '<p class="text-red-500">Failed to generate SVG. Please try again.</p>';
+          svgOutput.textContent = 'No SVG code generated.';
+        }
+      } catch (error) {
+        console.error('Error generating SVG:', error);
+        svgContainer.innerHTML = '<p class="text-red-500">Error generating SVG. Please try again.</p>';
+        svgOutput.textContent = 'Error occurred during generation.';
+      } finally {
+        generateButton.disabled = false;
+        generateButton.textContent = 'Generate';
+      }
+    }
+    
+    const generateButton = document.getElementById("generate-button");
+    if (generateButton) {
+      generateButton.addEventListener("click", handleSubmit);
+    }
+    
+    // Permettre la génération avec Enter dans le textarea
+    const promptElement = document.getElementById("user-prompt");
+    if (promptElement) {
+      promptElement.addEventListener("keydown", (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          handleSubmit();
+        }
+      });
+    }
+  </script>
 </Layout>
