@@ -54,7 +54,7 @@ import Layout from "../layouts/Layout.astro"
     
     async function generateSVG(prompt) {
       console.log('Generating SVG for prompt:', prompt);
-      const res = await fetch('/api/generate-svg', {
+      const res = await fetch('/api/generateSVG', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt }),
