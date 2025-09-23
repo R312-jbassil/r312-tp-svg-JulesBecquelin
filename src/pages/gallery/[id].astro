@@ -1,0 +1,268 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import pb from "../../utils/pb.js";
+import { Collections, type SvgRecord } from "../../utils/pocketbase-types";
+
+const id = Astro.params.id;
+const svg: SvgRecord = await pb.collection(Collections.Svg).getOne(id);
+
+// Parse chat history if it's a string
+let chatHistory = [];
+try {
+  chatHistory =
+    typeof svg?.chat_history === "string"
+      ? JSON.parse(svg.chat_history)
+      : svg?.chat_history || [];
+} catch (e) {
+  console.error("Error parsing chat history:", e);
+  chatHistory = [];
+}
+---
+
+<Layout>
+  <div
+    class="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 p-4"
+  >
+    <nav class="flex gap-4 mb-6">
+      <a href="/" class="btn btn-ghost text-white">Home</a>
+      <a href="/generate" class="btn btn-ghost text-white">Generator</a>
+      <a href="/gallery" class="btn btn-ghost text-white font-bold">Gallery</a>
+    </nav>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-120px)]">
+      <!-- SVG Preview -->
+      <div class="bg-white rounded-3xl p-6 flex flex-col">
+        <h2 class="text-xl font-bold mb-4 text-gray-800">
+          SVG Preview - {svg.name}
+        </h2>
+        <div
+          id="svg-preview"
+          class="flex-1 flex items-center justify-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300 overflow-auto"
+        >
+          {
+            svg.code_svg ? (
+              <Fragment set:html={svg.code_svg} />
+            ) : (
+              <p class="text-gray-500">No SVG content</p>
+            )
+          }
+        </div>
+      </div>
+
+      <!-- Chat History -->
+      <div class="bg-gray-900 rounded-3xl p-6 flex flex-col relative">
+        <h2 class="text-xl font-bold mb-4 text-white">Conversation History</h2>
+
+        <div id="chat-history" class="flex-1 overflow-y-auto pr-2 pb-20">
+          <div class="flex flex-col gap-4">
+            {
+              chatHistory.length > 0 ? (
+                chatHistory.map((msg: { role: string; content: string }) => (
+                  <div
+                    class={`chat ${msg.role === "user" ? "chat-start" : "chat-end"}`}
+                  >
+                    <div
+                      class={`chat-bubble max-w-[90%] ${msg.role === "user" ? "bg-primary text-primary-content" : "bg-secondary text-secondary-content"}`}
+                    >
+                      {msg.content.startsWith("<svg") ? (
+                        <div class="text-xs font-mono overflow-x-auto">
+                          <pre class="whitespace-pre-wrap break-all">
+                            {msg.content.substring(0, 100)}...
+                          </pre>
+                          <p class="text-xs opacity-70 mt-2">[SVG Code]</p>
+                        </div>
+                      ) : (
+                        <p class="whitespace-pre-wrap">{msg.content}</p>
+                      )}
+                    </div>
+                    <div class="chat-footer opacity-60 text-xs mt-1 text-white">
+                      {msg.role === "user" ? "You" : "AI Assistant"}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div class="text-center text-gray-400 mt-10">
+                  <p>No conversation history yet.</p>
+                  <p class="text-sm mt-2">Start editing your SVG below!</p>
+                </div>
+              )
+            }
+          </div>
+        </div>
+
+        <!-- Input Form -->
+        <form
+          id="input-prompt-form"
+          class="absolute bottom-0 left-0 right-0 bg-gray-800 rounded-b-3xl p-4 border-t border-gray-700"
+        >
+          <input
+            type="hidden"
+            name="history"
+            id="history-input"
+            value={JSON.stringify(chatHistory)}
+          />
+          <input type="hidden" name="id" value={svg?.id} />
+
+          <div class="flex items-center gap-2">
+            <input
+              id="prompt-input"
+              name="editPrompt"
+              type="text"
+              class="input input-bordered flex-grow bg-gray-700 text-white placeholder-gray-400"
+              placeholder="Enter a prompt to edit the SVG (e.g., 'make it bigger', 'add a blue circle')"
+              autocomplete="off"
+            />
+            <button class="btn btn-primary" type="submit" id="edit-submit-btn">
+              Edit
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    //@ts-nocheck
+    const form = document.getElementById("input-prompt-form");
+    const svgPreview = document.getElementById("svg-preview");
+    const chatHistory = document.getElementById("chat-history");
+    const historyInput = document.getElementById("history-input");
+    const editBtn = document.getElementById("edit-submit-btn");
+
+    // Fonction pour générer le SVG à partir du prompt
+    async function generateSVG(messages) {
+      const res = await fetch("/api/generateSVG", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(messages),
+      });
+      const data = await res.json();
+      return data.svg;
+    }
+
+    // Fonction pour mettre à jour le SVG dans la base de données
+    async function update(updatedData) {
+      const response = await fetch("/api/updateSVG", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedData),
+      });
+      return response;
+    }
+
+    // Scroll to bottom of chat
+    function scrollChatToBottom() {
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    // Écouteur d'événement pour le formulaire de soumission
+    form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+
+      const userPrompt = formData.get("editPrompt");
+      if (!userPrompt || userPrompt.trim() === "") {
+        alert("Please enter a prompt");
+        return;
+      }
+
+      // Créez un objet pour le prompt de l'utilisateur
+      let prompt = {
+        role: "user",
+        content: userPrompt,
+      };
+
+      // Récupérez l'historique des messages
+      let history = JSON.parse(formData.get("history") || "[]");
+      history.push(prompt);
+
+      // Réinitialisez le champ de saisie
+      document.getElementById("prompt-input").value = "";
+      editBtn.disabled = true;
+      editBtn.textContent = "Editing...";
+
+      // Affichez un indicateur de chargement
+      svgPreview.innerHTML += `<div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <span class="loading loading-ring loading-xl text-white"></span>
+      </div>`;
+
+      // Ajoutez le prompt à l'historique du chat
+      const userBubble = document.createElement("div");
+      userBubble.innerHTML = `
+        <div class="chat chat-start">
+          <div class="chat-bubble bg-primary text-primary-content">
+            <p class="whitespace-pre-wrap">${userPrompt}</p>
+          </div>
+          <div class="chat-footer opacity-60 text-xs mt-1 text-white">You</div>
+        </div>
+      `;
+      chatHistory.querySelector(".flex.flex-col.gap-4").appendChild(userBubble);
+      scrollChatToBottom();
+
+      try {
+        // Appelez la fonction pour générer le SVG
+        let aiResponse = await generateSVG(history);
+
+        // Extraire le SVG de la réponse
+        const svgMatch = aiResponse.content.match(/<svg[\s\S]*?<\/svg>/i);
+        const svgCode = svgMatch ? svgMatch[0] : "";
+
+        if (svgCode) {
+          // Ajoutez la réponse à l'historique
+          history.push({ role: "assistant", content: svgCode });
+
+          // Mettez à jour l'affichage du SVG
+          svgPreview.innerHTML = svgCode;
+
+          // Ajoutez le code SVG à l'historique du chat
+          const aiBubble = document.createElement("div");
+          aiBubble.innerHTML = `
+            <div class="chat chat-end">
+              <div class="chat-bubble bg-secondary text-secondary-content max-w-[90%]">
+                <div class="text-xs font-mono overflow-x-auto">
+                  <pre class="whitespace-pre-wrap break-all">${svgCode.substring(0, 100)}...</pre>
+                  <p class="text-xs opacity-70 mt-2">[SVG Code Updated]</p>
+                </div>
+              </div>
+              <div class="chat-footer opacity-60 text-xs mt-1 text-white">AI Assistant</div>
+            </div>
+          `;
+          chatHistory
+            .querySelector(".flex.flex-col.gap-4")
+            .appendChild(aiBubble);
+          scrollChatToBottom();
+
+          // Mettez à jour le champ caché avec le nouvel historique
+          historyInput.value = JSON.stringify(history);
+
+          // Sauvegardez dans la base de données
+          const response = await update({
+            id: formData.get("id"),
+            code_svg: svgCode,
+            chat_history: JSON.stringify(history),
+          });
+
+          if (!response.ok) {
+            console.error("Erreur lors de la mise à jour du SVG");
+          }
+        } else {
+          alert("Aucun SVG valide trouvé dans la réponse de l'IA.");
+        }
+      } catch (error) {
+        console.error(
+          "Erreur lors de la génération ou mise à jour du SVG :",
+          error,
+        );
+        alert("Une erreur est survenue, veuillez réessayer.");
+      } finally {
+        // Réactive le bouton
+        editBtn.disabled = false;
+        editBtn.textContent = "Edit";
+
+        // Retire le loader
+        const loader = svgPreview.querySelector(".absolute.inset-0");
+        if (loader) loader.remove();
+      }
+    });
+  </script>
+</Layout>
