@@ -91,11 +91,12 @@ export type SuperusersRecord = {
 	verified?: boolean
 }
 
-export type SvgsRecord = {
+export type SvgsRecord<Tchat_history = unknown> = {
+	chat_history?: null | Tchat_history
+	code_svg?: HTMLString
 	created?: IsoDateString
 	id: string
-	svg?: string
-	title?: string
+	name?: string
 	updated?: IsoDateString
 }
 
@@ -118,7 +119,7 @@ export type ExternalauthsResponse<Texpand = unknown> = Required<ExternalauthsRec
 export type MfasResponse<Texpand = unknown> = Required<MfasRecord> & BaseSystemFields<Texpand>
 export type OtpsResponse<Texpand = unknown> = Required<OtpsRecord> & BaseSystemFields<Texpand>
 export type SuperusersResponse<Texpand = unknown> = Required<SuperusersRecord> & AuthSystemFields<Texpand>
-export type SvgsResponse<Texpand = unknown> = Required<SvgsRecord> & BaseSystemFields<Texpand>
+export type SvgsResponse<Tchat_history = unknown, Texpand = unknown> = Required<SvgsRecord<Tchat_history>> & BaseSystemFields<Texpand>
 export type UsersResponse<Texpand = unknown> = Required<UsersRecord> & AuthSystemFields<Texpand>
 
 // Types containing all Records and Responses, useful for creating typing helper functions

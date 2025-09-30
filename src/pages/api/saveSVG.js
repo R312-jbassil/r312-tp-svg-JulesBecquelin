@@ -4,10 +4,9 @@ import { Collections } from "../../utils/pocketbase-types";
 export async function POST({ request }) {
   const data = await request.json();
   console.log("Received data to save:", data);
-  
   try {
     const record = await pb
-      .collection(Collections.Svg)
+      .collection(Collections.Svgs)
       .create(data);
     console.log("SVG saved with ID:", record.id);
 

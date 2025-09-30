@@ -1,0 +1,46 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import pb from "../../utils/pb.ts";
+import { Collections } from "../../utils/pocketbase-types.ts";
+
+const svgs = await pb.collection(Collections.Svgs).getFullList({
+  sort: '-created',
+});
+---
+
+<Layout>
+  <div class="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 p-4">
+    <nav class="flex gap-4 mb-6">
+      <a href="/" class="btn btn-ghost text-white">Home</a>
+      <a href="/generate" class="btn btn-ghost text-white">Generator</a>
+      <a href="/gallery" class="btn btn-ghost text-white font-bold">Gallery</a>
+    </nav>
+
+    <div class="container mx-auto">
+      <h1 class="text-3xl font-bold text-white mb-6">SVG Gallery</h1>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {svgs.map((svg) => (
+          <a href={`/gallery/${svg.id}`} class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
+            <div class="card-body">
+              <h2 class="card-title">{svg.name}</h2>
+              <div class="bg-gray-50 rounded-lg p-4 flex items-center justify-center h-48">
+                <Fragment set:html={svg.code_svg} />
+              </div>
+              <div class="card-actions justify-end">
+                <button class="btn btn-primary btn-sm">View & Edit</button>
+              </div>
+            </div>
+          </a>
+        ))};
+      </div>
+      
+      {svgs.length === 0 && (
+        <div class="text-center text-white mt-10">
+          <p class="text-xl">No SVGs saved yet.</p>
+          <a href="/generate" class="btn btn-primary mt-4">Create your first SVG</a>
+        </div>
+      )}
+    </div>
+  </div>
+</Layout>

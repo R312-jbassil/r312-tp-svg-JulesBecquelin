@@ -1,45 +1,51 @@
 ---
-import Layout from "../layouts/Layout.astro"
+import Layout from "../layouts/Layout.astro";
 ---
 
 <Layout>
-  <div class="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 p-4">
-   
+  <div
+    class="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 p-4"
+  >
     <nav class="flex gap-4 mb-6">
       <a href="/" class="btn btn-ghost text-white">Home</a>
-      <a href="/generate" class="btn btn-ghost text-white font-bold">Generator</a>
-      <a href="/library" class="btn btn-ghost text-white">Library</a>
+      <a href="/generate" class="btn btn-ghost text-white font-bold"
+        >Generator</a
+      >
       <a href="/gallery" class="btn btn-ghost text-white">Gallery</a>
     </nav>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-200px)]">
-      
       <div class="bg-white rounded-3xl p-6 flex flex-col">
         <h2 class="text-xl font-bold mb-4 text-gray-800">SVG Preview</h2>
-        <div id="svg-container" class="flex-1 flex items-center justify-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
+        <div
+          id="svg-container"
+          class="flex-1 flex items-center justify-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300"
+        >
           <p class="text-gray-500">Your SVG will appear here</p>
         </div>
       </div>
 
-      
       <div class="bg-gray-900 rounded-3xl p-6 flex flex-col">
         <h2 class="text-xl font-bold mb-4 text-white">Generated Code</h2>
-        <pre id="svg-output" class="flex-1 bg-black rounded-2xl p-4 text-green-400 font-mono text-sm overflow-auto">
-
+        <pre
+          id="svg-output"
+          class="flex-1 bg-black rounded-2xl p-4 text-green-400 font-mono text-sm overflow-auto">
         </pre>
       </div>
     </div>
 
-    
     <div class="mt-6 bg-white rounded-3xl p-6">
       <div class="flex gap-4 items-end">
         <div class="flex-1">
-          <label for="user-prompt" class="block text-sm font-medium text-gray-700 mb-2">
+          <label
+            for="user-prompt"
+            class="block text-sm font-medium text-gray-700 mb-2"
+          >
             Enter your prompt
           </label>
-          <textarea 
-            id="user-prompt" 
-            class="textarea textarea-bordered w-full h-20 resize-none" 
+          <textarea
+            id="user-prompt"
+            class="textarea textarea-bordered w-full h-20 resize-none"
             placeholder="Describe the SVG you want to generate (e.g., 'a simple car')"
           ></textarea>
         </div>
@@ -47,7 +53,11 @@ import Layout from "../layouts/Layout.astro"
           <button id="generate-button" class="btn btn-primary btn-lg px-8">
             Generate
           </button>
-          <button id="edit-button" class="btn btn-secondary btn-lg px-8" disabled>
+          <button
+            id="edit-button"
+            class="btn btn-secondary btn-lg px-8"
+            disabled
+          >
             Edit
           </button>
           <button id="save-button" class="btn btn-success btn-lg px-8" disabled>
@@ -60,22 +70,22 @@ import Layout from "../layouts/Layout.astro"
 
   <script>
     //@ts-nocheck
-    
+
     // Liste pour stocker l'historique des échanges
     let promptList = [];
-    
+
     // Fonction pour générer le SVG
     async function generateSVG(messages) {
-      console.log('Generating SVG with messages:', messages);
-      const res = await fetch('/api/generateSVG', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      console.log("Generating SVG with messages:", messages);
+      const res = await fetch("/api/generateSVG", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(messages),
       });
       const data = await res.json();
       return data.svg;
     }
-    
+
     // Fonction pour sauvegarder le SVG
     async function saveSVG(params) {
       const res = await fetch("/api/saveSVG", {
@@ -97,62 +107,67 @@ import Layout from "../layouts/Layout.astro"
       const generateButton = document.getElementById("generate-button");
       const editButton = document.getElementById("edit-button");
       const saveButton = document.getElementById("save-button");
-      
+
       prompt = promptElement ? promptElement.value : "";
-      
+
       if (!prompt.trim()) {
-        alert('Please enter a prompt');
+        alert("Please enter a prompt");
         return;
       }
-      
-      console.log('submitted: ', prompt);
-      
+
+      console.log("submitted: ", prompt);
+
       // Réinitialiser la liste des prompts
-      promptList.length = 0; 
+      promptList.length = 0;
       promptList.push({ role: "user", content: prompt });
-      
+
       // Affichage du loading spinner et désactivation des boutons
       svgContainer.innerHTML = `<span class="loading loading-ring loading-xl"></span>`;
       generateButton.disabled = true;
       editButton.disabled = true;
       saveButton.disabled = true;
-      generateButton.textContent = 'Generating...';
-      svgOutput.textContent = 'Generating SVG code...';
-      
+      generateButton.textContent = "Generating...";
+      svgOutput.textContent = "Generating SVG code...";
+
       try {
         // Appeler la fonction pour générer le SVG
         aiResponse = await generateSVG(promptList);
-        console.log('AI Response: ', aiResponse);
-        
+        console.log("AI Response: ", aiResponse);
+
         // Extraire le SVG de la réponse
         const svgMatch = aiResponse.content.match(/<svg[\s\S]*?<\/svg>/i);
         aiResponse.content = svgMatch ? svgMatch[0] : "";
-        
+
         if (aiResponse.content) {
           // Ajouter la réponse de l'IA à la liste des prompts
           promptList.push(aiResponse);
-          
+
           // Afficher le SVG généré
           svgOutput.textContent = aiResponse.content;
           svgContainer.innerHTML = aiResponse.content;
-          
+
           // Activer les boutons edit et save
           editButton.disabled = false;
           saveButton.disabled = false;
+
+          // Vider le champ de texte
+          promptElement.value = "";
         } else {
-          svgContainer.innerHTML = '<p class="text-red-500">Failed to generate SVG. Please try again.</p>';
-          svgOutput.textContent = 'No SVG code generated.';
+          svgContainer.innerHTML =
+            '<p class="text-red-500">Failed to generate SVG. Please try again.</p>';
+          svgOutput.textContent = "No SVG code generated.";
         }
       } catch (error) {
-        console.error('Error generating SVG:', error);
-        svgContainer.innerHTML = '<p class="text-red-500">Error generating SVG. Please try again.</p>';
-        svgOutput.textContent = 'Error occurred during generation.';
+        console.error("Error generating SVG:", error);
+        svgContainer.innerHTML =
+          '<p class="text-red-500">Error generating SVG. Please try again.</p>';
+        svgOutput.textContent = "Error occurred during generation.";
       } finally {
         generateButton.disabled = false;
-        generateButton.textContent = 'Generate';
+        generateButton.textContent = "Generate";
       }
     }
-    
+
     // Fonction pour gérer l'édition du SVG
     async function handleEdit() {
       let prompt = "";
@@ -163,120 +178,147 @@ import Layout from "../layouts/Layout.astro"
       const generateButton = document.getElementById("generate-button");
       const editButton = document.getElementById("edit-button");
       const saveButton = document.getElementById("save-button");
-      
+
       prompt = promptElement ? promptElement.value : "";
-      
+
       if (!prompt.trim()) {
-        alert('Please enter an edit prompt');
+        alert("Please enter an edit prompt");
         return;
       }
-      
+
       console.log("Edit prompt submitted: ", prompt);
-      
+
       // Ajout du prompt de l'utilisateur à la liste
       promptList.push({ role: "user", content: prompt });
-      
+
       // Afficher un spinner de chargement
       svgContainer.innerHTML = `<span class="loading loading-ring loading-xl"></span>`;
       generateButton.disabled = true;
       editButton.disabled = true;
       saveButton.disabled = true;
-      editButton.textContent = 'Editing...';
-      
+      editButton.textContent = "Editing...";
+
       try {
         // Appeler la fonction pour générer le SVG
         aiResponse = await generateSVG(promptList);
-        
+
         // Extraire le SVG de la réponse
         const svgMatch = aiResponse.content.match(/<svg[\s\S]*?<\/svg>/i);
         aiResponse.content = svgMatch ? svgMatch[0] : "";
-        
+
         console.log("Edited SVG code: ", aiResponse.content);
-        
+
         if (aiResponse.content) {
           // Ajouter la réponse de l'IA à la liste des prompts
           promptList.push(aiResponse);
-          
+
           // Afficher le SVG généré
           svgOutput.textContent = aiResponse.content;
           svgContainer.innerHTML = aiResponse.content;
         } else {
-          svgContainer.innerHTML = '<p class="text-red-500">Failed to edit SVG. Please try again.</p>';
+          svgContainer.innerHTML =
+            '<p class="text-red-500">Failed to edit SVG. Please try again.</p>';
         }
       } catch (error) {
-        console.error('Error editing SVG:', error);
-        svgContainer.innerHTML = '<p class="text-red-500">Error editing SVG. Please try again.</p>';
+        console.error("Error editing SVG:", error);
+        svgContainer.innerHTML =
+          '<p class="text-red-500">Error editing SVG. Please try again.</p>';
       } finally {
         // Réactiver les boutons
         generateButton.disabled = false;
         editButton.disabled = false;
         saveButton.disabled = false;
-        editButton.textContent = 'Edit';
-        
+        editButton.textContent = "Edit";
+
         // Vider le champ de texte
-        promptElement.value = '';
-        
+        promptElement.value = "";
+
         console.log("Conversation history: ", promptList);
       }
     }
-    
+
     // Event listeners
     const generateButton = document.getElementById("generate-button");
     if (generateButton) {
       generateButton.addEventListener("click", handleSubmit);
     }
-    
+
     const editButton = document.getElementById("edit-button");
     if (editButton) {
       editButton.addEventListener("click", handleEdit);
     }
-    
+
     const saveButton = document.getElementById("save-button");
     if (saveButton) {
       saveButton.addEventListener("click", async () => {
-        const svgOutput = document.getElementById("svg-output")?.textContent;
-        
-        if (!svgOutput || svgOutput.trim() === '') {
-          alert('No SVG to save');
+        const svgOutput = document.getElementById("svg-output")?.innerHTML;
+
+        // Validation améliorée
+        if (
+          !svgOutput ||
+          svgOutput.trim() === "" ||
+          svgOutput === "Generating SVG code..." ||
+          svgOutput === "No SVG code generated." ||
+          svgOutput === "Error occurred during generation."
+        ) {
+          alert("No valid SVG to save");
           return;
         }
-        
+
         const name = prompt("Enter a name for your SVG creation:");
-        
-        if (!name || name.trim() === '') {
-          alert('Please provide a name');
+
+        if (!name || name.trim() === "") {
+          alert("Please provide a name");
           return;
         }
-        
-        console.log("Saving SVG: ", JSON.stringify(svgOutput));
-        
+
+        console.log("Saving SVG...");
+
         const params = {
-          name: name,
+          name: name.trim(),
           code_svg: svgOutput,
           chat_history: JSON.stringify(promptList),
         };
-        
+
         try {
+          // Désactiver le bouton pendant la sauvegarde
+          saveButton.disabled = true;
+          saveButton.textContent = "Saving...";
+
           const result = await saveSVG(params);
+
           if (result.success) {
             alert("SVG saved successfully!");
+            // Feedback visuel
+            saveButton.textContent = "Saved ✓";
+            saveButton.classList.remove("btn-success");
+            saveButton.classList.add("btn-outline");
+            // Optionnel : rediriger vers la galerie
+            // setTimeout(() => {
+            //   window.location.href = `/gallery/${result.id}`;
+            // }, 500);
           } else {
             alert("Error saving SVG: " + (result.error || "Unknown error"));
+            saveButton.disabled = false;
+            saveButton.textContent = "Save";
           }
         } catch (error) {
-          console.error('Error saving SVG:', error);
+          console.error("Error saving SVG:", error);
           alert("Error saving SVG: " + error.message);
+          saveButton.disabled = false;
+          saveButton.textContent = "Save";
         }
       });
     }
-    
+
     // Permettre la génération avec Ctrl+Enter ou Cmd+Enter dans le textarea
     const promptElement = document.getElementById("user-prompt");
     if (promptElement) {
       promptElement.addEventListener("keydown", (e) => {
-        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
           e.preventDefault();
           // Si un SVG existe déjà, utiliser Edit, sinon Generate
+          const editButton = document.getElementById("edit-button");
           if (promptList.length > 0 && !editButton.disabled) {
             handleEdit();
           } else {
